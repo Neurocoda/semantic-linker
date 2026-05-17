@@ -47,7 +47,7 @@ export default class SemanticLinkerPlugin extends Plugin {
 		});
 
 		this.addCommand({
-			id: "open-semantic-linker",
+			id: "open-view",
 			name: "Open Semantic Linker",
 			callback: () => {
 				void this.activateView();
@@ -55,7 +55,7 @@ export default class SemanticLinkerPlugin extends Plugin {
 		});
 
 		this.addCommand({
-			id: "rebuild-semantic-linker-index",
+			id: "rebuild-index",
 			name: "Rebuild Semantic Linker index",
 			callback: () => {
 				void this.rebuildIndex();
@@ -63,7 +63,7 @@ export default class SemanticLinkerPlugin extends Plugin {
 		});
 
 		this.addCommand({
-			id: "clear-semantic-linker-cache",
+			id: "clear-cache",
 			name: "Clear Semantic Linker cache",
 			callback: () => {
 				void this.clearCache();
@@ -71,7 +71,7 @@ export default class SemanticLinkerPlugin extends Plugin {
 		});
 
 		this.addCommand({
-			id: "refresh-semantic-linker",
+			id: "refresh-recommendations",
 			name: "Refresh Semantic Linker recommendations",
 			callback: () => {
 				void this.refreshViews();
@@ -113,7 +113,6 @@ export default class SemanticLinkerPlugin extends Plugin {
 			window.clearTimeout(this.refreshTimer);
 			this.refreshTimer = null;
 		}
-		this.app.workspace.detachLeavesOfType(VIEW_TYPE_SEMANTIC_LINKER);
 	}
 
 	async loadSettings(): Promise<void> {

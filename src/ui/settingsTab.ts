@@ -16,8 +16,6 @@ export class SemanticLinkerSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl("h2", { text: "Semantic Linker" });
-
 		new Setting(containerEl)
 			.setName("Provider")
 			.setDesc("Embedding provider used when rebuilding the local index.")
@@ -95,7 +93,9 @@ export class SemanticLinkerSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
-		containerEl.createEl("h3", { text: "Link insertion" });
+		new Setting(containerEl)
+			.setName("Link insertion")
+			.setHeading();
 
 		new Setting(containerEl)
 			.setName("Link heading")
@@ -143,7 +143,9 @@ export class SemanticLinkerSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
-		containerEl.createEl("h3", { text: "Ranking" });
+		new Setting(containerEl)
+			.setName("Ranking")
+			.setHeading();
 
 		new Setting(containerEl)
 			.setName("Recommendation preset")
@@ -181,7 +183,9 @@ export class SemanticLinkerSettingTab extends PluginSettingTab {
 					new Notice("Semantic Linker feedback records cleared.");
 				}));
 
-		containerEl.createEl("h4", { text: "Ranking weights" });
+		new Setting(containerEl)
+			.setName("Ranking weights")
+			.setHeading();
 		addWeightSetting(containerEl, this.plugin, "Title / filename", "title");
 		addWeightSetting(containerEl, this.plugin, "Description", "description");
 		addWeightSetting(containerEl, this.plugin, "Tags embedding", "tagsEmbedding");
@@ -205,7 +209,9 @@ export class SemanticLinkerSettingTab extends PluginSettingTab {
 					this.display();
 				}));
 
-		containerEl.createEl("h3", { text: "Graph view" });
+		new Setting(containerEl)
+			.setName("Graph view")
+			.setHeading();
 		addGraphSetting(containerEl, this.plugin, "Node size", "nodeSize", 0.1, 0.4, 2.4);
 		addGraphSetting(containerEl, this.plugin, "Link thickness", "linkThickness", 0.1, 0.4, 2.4);
 		addGraphSetting(containerEl, this.plugin, "Text fade threshold", "textFadeThreshold", 0.05, 0, 1);
@@ -220,7 +226,9 @@ export class SemanticLinkerSettingTab extends PluginSettingTab {
 					await this.plugin.refreshRecommendations();
 				}));
 
-		containerEl.createEl("h4", { text: "Graph forces" });
+		new Setting(containerEl)
+			.setName("Graph forces")
+			.setHeading();
 		addGraphSetting(containerEl, this.plugin, "Center force", "centerForce", 0.05, 0, 2);
 		addGraphSetting(containerEl, this.plugin, "Repel force", "repelForce", 0.05, 0.2, 2.5);
 		addGraphSetting(containerEl, this.plugin, "Link force", "linkForce", 0.05, 0, 2);
@@ -238,7 +246,9 @@ export class SemanticLinkerSettingTab extends PluginSettingTab {
 					this.display();
 				}));
 
-		containerEl.createEl("h3", { text: "Index" });
+		new Setting(containerEl)
+			.setName("Index")
+			.setHeading();
 
 		new Setting(containerEl)
 			.setName("Rebuild index")
