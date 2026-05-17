@@ -1,0 +1,20 @@
+# editors
+.vscode/
+.idea/
+*.iml
+
+# npm
+node_modules/
+
+# build output uploaded to releases
+main.js
+*.map
+
+# Obsidian local data and generated caches
+data.json
+cache/
+
+# logs and temp files
+*.log
+*.tmp
+.DS_Store

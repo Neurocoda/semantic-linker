@@ -1,0 +1,163 @@
+.semantic-linker-view {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	height: 100%;
+	padding: 0;
+}
+
+.semantic-linker-status {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.3;
+	min-height: 0;
+	padding: 0 10px;
+}
+
+.semantic-linker-status:not(:empty) {
+	padding-top: 8px;
+	min-height: 16px;
+}
+
+.semantic-linker-graph-host {
+	position: relative;
+	flex: 1 1 auto;
+	min-height: 260px;
+	overflow: hidden;
+	background: var(--background-primary);
+}
+
+.semantic-linker-graph {
+	display: block;
+	width: 100%;
+	height: 100%;
+	touch-action: none;
+	user-select: none;
+}
+
+.semantic-linker-graph-controls {
+	position: absolute;
+	top: 12px;
+	right: 10px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	z-index: 2;
+	pointer-events: auto;
+}
+
+.semantic-linker-graph-control {
+	width: 28px;
+	height: 28px;
+	color: var(--text-muted);
+	opacity: 0.82;
+}
+
+.semantic-linker-graph-control:hover,
+.semantic-linker-graph-control:focus-visible,
+.semantic-linker-graph-control.is-active {
+	color: var(--text-normal);
+	opacity: 1;
+}
+
+.semantic-linker-graph-control.is-active {
+	background-color: var(--background-modifier-hover);
+}
+
+.semantic-linker-edge {
+	stroke: var(--graph-line, var(--text-faint));
+	stroke-width: calc(0.65px * var(--semantic-linker-link-thickness, 1));
+	opacity: 0.38;
+}
+
+.semantic-linker-edge.semantic-linker-highlighted {
+	stroke: var(--graph-line-highlight, var(--text-muted));
+	opacity: 0.9;
+}
+
+.semantic-linker-arrow {
+	fill: var(--graph-line, var(--text-faint));
+	opacity: 0.55;
+}
+
+.semantic-linker-edge-candidate {
+	stroke-dasharray: 3 5;
+	opacity: 0.18;
+}
+
+.semantic-linker-node {
+	cursor: grab;
+	outline: none;
+}
+
+.semantic-linker-graph-panning,
+.semantic-linker-graph-dragging,
+.semantic-linker-graph-panning .semantic-linker-node,
+.semantic-linker-graph-dragging .semantic-linker-node {
+	cursor: grabbing;
+}
+
+.semantic-linker-dimmed {
+	opacity: 0.16;
+}
+
+.semantic-linker-node-hit-area {
+	fill: transparent;
+	stroke: none;
+}
+
+.semantic-linker-node-dot {
+	transition: fill 120ms ease, stroke 120ms ease, r 120ms ease, opacity 120ms ease;
+}
+
+.semantic-linker-node-center .semantic-linker-node-dot {
+	fill: var(--graph-node-focused, var(--interactive-accent));
+	stroke: var(--graph-node-focused, var(--interactive-accent));
+	stroke-width: 1.2;
+}
+
+.semantic-linker-node-linked .semantic-linker-node-dot {
+	fill: var(--graph-node, var(--text-faint));
+	stroke: none;
+}
+
+.semantic-linker-node-candidate .semantic-linker-node-dot {
+	fill: var(--graph-node, var(--text-muted));
+	stroke: none;
+	opacity: 0.95;
+}
+
+.semantic-linker-node:hover .semantic-linker-node-dot,
+.semantic-linker-node:focus .semantic-linker-node-dot {
+	fill: var(--graph-node-focused, var(--interactive-accent));
+	stroke: var(--graph-node-focused, var(--interactive-accent));
+	stroke-width: 1;
+	opacity: 1;
+}
+
+.semantic-linker-node-label {
+	fill: var(--graph-text, var(--text-normal));
+	font-size: 10px;
+	pointer-events: none;
+	user-select: none;
+	opacity: 0;
+	paint-order: stroke;
+	stroke: var(--background-primary);
+	stroke-linejoin: round;
+	stroke-width: 4px;
+	transition: opacity 120ms ease;
+}
+
+.semantic-linker-node-label-faded {
+	opacity: 0;
+}
+
+.semantic-linker-node:hover .semantic-linker-node-label,
+.semantic-linker-node:focus .semantic-linker-node-label {
+	opacity: 1;
+}
+
+.semantic-linker-node-center .semantic-linker-node-label {
+	font-weight: 600;
+	font-size: 10.5px;
+}

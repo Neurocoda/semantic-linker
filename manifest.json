@@ -1,0 +1,10 @@
+{
+	"id": "semantic-linker",
+	"name": "Semantic Linker",
+	"version": "0.1.0",
+	"minAppVersion": "1.5.0",
+	"description": "Recommend semantically related notes from local metadata and insert curated links into your notes.",
+	"author": "Neurocoda",
+	"authorUrl": "https://neurocoda.com",
+	"isDesktopOnly": true
+}
