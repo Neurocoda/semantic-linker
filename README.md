@@ -2,7 +2,11 @@
 
 Semantic Linker helps you discover semantically related notes from local metadata and add curated links from an Obsidian-style graph.
 
-It is designed for study workflows where filenames and frontmatter are already meaningful. Semantic Linker indexes note titles, filenames, tags, descriptions, type, and kind. It does not embed full note bodies.
+It works best when your notes already have useful front matter and consistent filenames. Semantic Linker indexes note titles, filenames, tags, descriptions, type, and kind. It does not embed full note bodies.
+
+## Recommended companion plugin
+
+Semantic Linker pairs well with [Front Matter Generator](https://community.obsidian.md/plugins/front-matter-generator) ([GitHub](https://github.com/neurocoda/front-matter-generator)), which is also maintained by Neurocoda. It can generate stronger front matter from your notes, including titles, descriptions, tags, optional filename candidates, and custom properties. That gives Semantic Linker better metadata to index and usually improves the quality of recommendations. See the companion plugin's README for full details and setup.
 
 ## Features
 
