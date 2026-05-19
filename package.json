@@ -1,6 +1,6 @@
 {
 	"name": "semantic-linker",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Recommend semantically related notes from local metadata and insert curated links.",
 	"main": "main.js",
 	"type": "module",
