@@ -33,6 +33,8 @@ export interface GraphDisplaySettings {
 	nodeSize: number;
 	linkThickness: number;
 	textFadeThreshold: number;
+	showLinkedNodes: boolean;
+	showCandidateNodes: boolean;
 	showArrows: boolean;
 	centerForce: number;
 	repelForce: number;

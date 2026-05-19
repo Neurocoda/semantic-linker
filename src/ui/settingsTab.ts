@@ -216,6 +216,26 @@ export class SemanticLinkerSettingTab extends PluginSettingTab {
 		addGraphSetting(containerEl, this.plugin, "Link thickness", "linkThickness", 0.1, 0.4, 2.4);
 		addGraphSetting(containerEl, this.plugin, "Text fade threshold", "textFadeThreshold", 0.05, 0, 1);
 		new Setting(containerEl)
+			.setName("Show linked nodes")
+			.setDesc("Show notes already linked from the current note.")
+			.addToggle((toggle) => toggle
+				.setValue(this.plugin.settings.graphDisplay.showLinkedNodes)
+				.onChange(async (value) => {
+					this.plugin.settings.graphDisplay.showLinkedNodes = value;
+					await this.plugin.saveSettings();
+					await this.plugin.refreshRecommendations();
+				}));
+		new Setting(containerEl)
+			.setName("Show candidate nodes")
+			.setDesc("Show recommended notes that are not linked yet.")
+			.addToggle((toggle) => toggle
+				.setValue(this.plugin.settings.graphDisplay.showCandidateNodes)
+				.onChange(async (value) => {
+					this.plugin.settings.graphDisplay.showCandidateNodes = value;
+					await this.plugin.saveSettings();
+					await this.plugin.refreshRecommendations();
+				}));
+		new Setting(containerEl)
 			.setName("Show arrows")
 			.setDesc("Show link direction for connected context nodes.")
 			.addToggle((toggle) => toggle

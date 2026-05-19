@@ -51,10 +51,15 @@ export interface StabilizedCandidateCohort {
 export function buildGraphModel(source: IndexedDoc, linkedDocs: IndexedDoc[], rankingResults: RankingResult[], display?: GraphDisplaySettings): GraphModel {
 	const nodeSize = display?.nodeSize ?? 1;
 	const center = createNode(source.path, source.path, source.title || source.basename, source.ctime ?? source.mtime, 1, "center", nodeRadius(source, "center", 1, nodeSize));
+	const showLinkedNodes = display?.showLinkedNodes ?? true;
+	const showCandidateNodes = display?.showCandidateNodes ?? true;
+	const visibleLinkedDocs = showLinkedNodes ? linkedDocs : [];
 	const linkedPaths = new Set(linkedDocs.map((doc) => doc.path));
-	const unlinkedResults = rankingResults.filter((result) => !linkedPaths.has(result.doc.path) && result.doc.path !== source.path);
+	const unlinkedResults = showCandidateNodes
+		? rankingResults.filter((result) => !linkedPaths.has(result.doc.path) && result.doc.path !== source.path)
+		: [];
 	const scoreRange = scoreStats(unlinkedResults.map((result) => result.score));
-	const linkedNodes = linkedDocs
+	const linkedNodes = visibleLinkedDocs
 		.filter((doc) => doc.path !== source.path)
 		.map((doc) => createNode(`linked:${doc.path}`, doc.path, doc.title || doc.basename, doc.ctime ?? doc.mtime, 1, "linked", nodeRadius(doc, "linked", 1, nodeSize)));
 	const candidateNodes = unlinkedResults
@@ -75,7 +80,7 @@ export function buildGraphModel(source: IndexedDoc, linkedDocs: IndexedDoc[], ra
 	const linkedNodeIds = new Map(linkedNodes.map((node) => [node.path, node.id]));
 	const peerEdges: GraphEdge[] = [];
 	const peerEdgeKeys = new Set<string>();
-	for (const doc of linkedDocs) {
+	for (const doc of visibleLinkedDocs) {
 		const sourceId = linkedNodeIds.get(doc.path);
 		if (!sourceId) {
 			continue;

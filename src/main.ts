@@ -1,4 +1,4 @@
-import { Notice, Plugin, TFile, WorkspaceLeaf } from "obsidian";
+import { MarkdownView, Notice, Plugin, TFile, WorkspaceLeaf } from "obsidian";
 import { DEFAULT_SETTINGS, normalizeSettings } from "./core/settings";
 import type { FeedbackEvent, IndexedDoc, PluginSettings, RankingResult } from "./core/types";
 import { ensureHeadingAndAppend, hasExistingLink, removeLinksFromHeadingSection } from "./core/template";
@@ -32,6 +32,7 @@ export default class SemanticLinkerPlugin extends Plugin {
 	private refreshPromise: Promise<void> | null = null;
 	private syncInProgress = false;
 	private pendingSync = false;
+	private lastMarkdownFilePath: string | null = null;
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -78,8 +79,19 @@ export default class SemanticLinkerPlugin extends Plugin {
 			}
 		});
 
-		this.registerEvent(this.app.workspace.on("active-leaf-change", () => {
+		this.app.workspace.onLayoutReady(() => {
+			this.rememberMarkdownFile(this.findCurrentMarkdownFile());
+			void this.refreshViews();
+		});
+
+		this.registerEvent(this.app.workspace.on("active-leaf-change", (leaf) => {
+			this.rememberMarkdownFileFromLeaf(leaf);
 			this.scheduleIndexSync();
+			this.scheduleRefreshViews(80);
+		}));
+		this.registerEvent(this.app.workspace.on("file-open", (file) => {
+			this.rememberMarkdownFile(file);
+			this.scheduleRefreshViews(80);
 		}));
 		this.registerEvent(this.app.vault.on("create", (file) => {
 			if (isMarkdownFile(file)) this.scheduleIndexSync();
@@ -202,6 +214,10 @@ export default class SemanticLinkerPlugin extends Plugin {
 			.filter((doc): doc is IndexedDoc => Boolean(doc));
 	}
 
+	getActiveMarkdownFile(): TFile | null {
+		return this.findCurrentMarkdownFile();
+	}
+
 	async getRecommendations(activeFile: TFile, options: { treatAsUnlinkedPaths?: Set<string> } = {}): Promise<RankingResult[]> {
 		const docs = this.getIndexedDocs();
 		const alreadyLinkedPaths = getAlreadyLinkedPaths(this.app, activeFile);
@@ -219,7 +235,7 @@ export default class SemanticLinkerPlugin extends Plugin {
 	}
 
 	async insertRecommendation(result: RankingResult): Promise<InsertRecommendationResult | null> {
-		const activeFile = this.app.workspace.getActiveFile();
+		const activeFile = this.getActiveMarkdownFile();
 		if (!activeFile) {
 			new Notice("Open a note before inserting a link.");
 			return null;
@@ -247,7 +263,7 @@ export default class SemanticLinkerPlugin extends Plugin {
 	}
 
 	async unlinkFromLinksSection(targetPath: string): Promise<LinkRemovalResult> {
-		const activeFile = this.app.workspace.getActiveFile();
+		const activeFile = this.getActiveMarkdownFile();
 		if (!activeFile) {
 			return {
 				status: "no-active-file",
@@ -311,7 +327,7 @@ export default class SemanticLinkerPlugin extends Plugin {
 	}
 
 	async openRecommendation(result: RankingResult): Promise<void> {
-		const sourceFile = this.app.workspace.getActiveFile();
+		const sourceFile = this.getActiveMarkdownFile();
 		const file = this.app.vault.getFileByPath(result.doc.path);
 		if (file) {
 			await this.app.workspace.getLeaf(false).openFile(file);
@@ -322,10 +338,80 @@ export default class SemanticLinkerPlugin extends Plugin {
 	}
 
 	async dismissRecommendation(result: RankingResult): Promise<void> {
-		const activeFile = this.app.workspace.getActiveFile();
+		const activeFile = this.getActiveMarkdownFile();
 		if (activeFile) {
 			await this.saveFeedback("dismissed", activeFile.path, result);
 		}
+	}
+
+	private findCurrentMarkdownFile(): TFile | null {
+		const activeFile = this.app.workspace.getActiveFile();
+		if (isMarkdownFile(activeFile)) {
+			this.rememberMarkdownFile(activeFile);
+			return activeFile;
+		}
+
+		const activeEditorFile = this.app.workspace.activeEditor?.file;
+		if (isMarkdownFile(activeEditorFile)) {
+			this.rememberMarkdownFile(activeEditorFile);
+			return activeEditorFile;
+		}
+
+		const rememberedFile = this.getMarkdownFileByPath(this.lastMarkdownFilePath);
+		if (rememberedFile) {
+			return rememberedFile;
+		}
+
+		const mostRecentRootFile = this.findMostRecentRootMarkdownFile();
+		if (mostRecentRootFile) {
+			this.rememberMarkdownFile(mostRecentRootFile);
+			return mostRecentRootFile;
+		}
+
+		for (const path of this.app.workspace.getLastOpenFiles()) {
+			const file = this.getMarkdownFileByPath(path);
+			if (file) {
+				this.rememberMarkdownFile(file);
+				return file;
+			}
+		}
+
+		return null;
+	}
+
+	private findMostRecentRootMarkdownFile(): TFile | null {
+		const mostRecentLeaf = this.app.workspace.getMostRecentLeaf(this.app.workspace.rootSplit);
+		if (mostRecentLeaf?.view instanceof MarkdownView && isMarkdownFile(mostRecentLeaf.view.file)) {
+			return mostRecentLeaf.view.file;
+		}
+
+		let fallback: TFile | null = null;
+		this.app.workspace.iterateRootLeaves((leaf) => {
+			if (!fallback && leaf.view instanceof MarkdownView && isMarkdownFile(leaf.view.file)) {
+				fallback = leaf.view.file;
+			}
+		});
+		return fallback;
+	}
+
+	private rememberMarkdownFileFromLeaf(leaf: WorkspaceLeaf | null): void {
+		if (leaf?.view instanceof MarkdownView) {
+			this.rememberMarkdownFile(leaf.view.file);
+		}
+	}
+
+	private rememberMarkdownFile(file: TFile | null | undefined): void {
+		if (isMarkdownFile(file)) {
+			this.lastMarkdownFilePath = file.path;
+		}
+	}
+
+	private getMarkdownFileByPath(path: string | null): TFile | null {
+		if (!path) {
+			return null;
+		}
+		const file = this.app.vault.getFileByPath(path);
+		return isMarkdownFile(file) ? file : null;
 	}
 
 	private async saveFeedback(event: FeedbackEvent["event"], source: string, result: RankingResult): Promise<void> {

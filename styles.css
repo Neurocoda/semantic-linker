@@ -64,6 +64,142 @@
 	background-color: var(--background-modifier-hover);
 }
 
+.semantic-linker-graph-settings-panel {
+	position: absolute;
+	top: 54px;
+	right: 14px;
+	width: min(284px, calc(100% - 28px));
+	max-height: calc(100% - 68px);
+	overflow-y: auto;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	box-shadow: var(--shadow-l);
+	color: var(--text-normal);
+	z-index: 3;
+}
+
+.semantic-linker-graph-settings-actions {
+	position: absolute;
+	top: 7px;
+	right: 8px;
+	display: flex;
+	gap: 4px;
+	z-index: 1;
+}
+
+.semantic-linker-graph-settings-action {
+	width: 24px;
+	height: 24px;
+	color: var(--text-muted);
+}
+
+.semantic-linker-graph-settings-action:hover,
+.semantic-linker-graph-settings-action:focus-visible {
+	color: var(--text-normal);
+}
+
+.semantic-linker-graph-settings-section {
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.semantic-linker-graph-settings-section:last-child {
+	border-bottom: none;
+}
+
+.semantic-linker-graph-settings-section-header {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	min-height: 39px;
+	padding: 0 12px;
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	cursor: pointer;
+	list-style: none;
+}
+
+.semantic-linker-graph-settings-actions + .semantic-linker-graph-settings-section .semantic-linker-graph-settings-section-header {
+	padding-right: 72px;
+}
+
+.semantic-linker-graph-settings-section-header::-webkit-details-marker {
+	display: none;
+}
+
+.semantic-linker-graph-settings-section-chevron {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 14px;
+	height: 14px;
+	color: var(--text-muted);
+	transition: transform 120ms ease;
+}
+
+.semantic-linker-graph-settings-section[open] .semantic-linker-graph-settings-section-chevron {
+	transform: rotate(90deg);
+}
+
+.semantic-linker-graph-settings-section-title {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.semantic-linker-graph-settings-section-content {
+	padding: 2px 12px 14px;
+}
+
+.semantic-linker-graph-settings-section-content .setting-item {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 104px;
+	align-items: center;
+	gap: 8px;
+	min-height: 30px;
+	margin: 6px 0;
+	padding: 0 0 0 1px;
+	background: var(--background-secondary);
+	border: none;
+	border-radius: 999px;
+}
+
+.semantic-linker-graph-settings-section-content .setting-item-info {
+	display: block;
+	min-width: 0;
+	margin: 0;
+}
+
+.semantic-linker-graph-settings-section-content .setting-item-name {
+	overflow: hidden;
+	color: var(--text-normal);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.1;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.semantic-linker-graph-settings-section-content .setting-item-control {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	min-width: 0;
+	width: 100%;
+}
+
+.semantic-linker-graph-settings-section-content .setting-item-control input[type="range"],
+.semantic-linker-graph-settings-section-content .setting-item-control .slider {
+	width: 100%;
+	min-width: 0;
+	margin: 0;
+}
+
+.semantic-linker-graph-settings-section-content .checkbox-container {
+	margin-inline-start: auto;
+}
+
 .semantic-linker-edge {
 	stroke: var(--graph-line, var(--text-faint));
 	stroke-width: calc(0.65px * var(--semantic-linker-link-thickness, 1));
@@ -140,11 +276,12 @@
 	font-size: 10px;
 	pointer-events: none;
 	user-select: none;
+	white-space: pre;
 	opacity: 0;
 	paint-order: stroke;
 	stroke: var(--background-primary);
 	stroke-linejoin: round;
-	stroke-width: 4px;
+	stroke-width: 5px;
 	transition: opacity 120ms ease;
 }
 

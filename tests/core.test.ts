@@ -229,12 +229,14 @@ test("settings normalization repairs invalid graph display values", () => {
 	const raw = {
 		graphDisplay: {
 			nodeSize: "large",
+			showCandidateNodes: "yes",
 			showArrows: "false",
 			linkDistance: Number.NaN
 		}
 	} as Partial<PluginSettings>;
 	const settings = normalizeSettings(raw);
 	assert.equal(settings.graphDisplay.nodeSize, DEFAULT_SETTINGS.graphDisplay.nodeSize);
+	assert.equal(settings.graphDisplay.showCandidateNodes, DEFAULT_SETTINGS.graphDisplay.showCandidateNodes);
 	assert.equal(settings.graphDisplay.showArrows, DEFAULT_SETTINGS.graphDisplay.showArrows);
 	assert.equal(settings.graphDisplay.linkDistance, DEFAULT_SETTINGS.graphDisplay.linkDistance);
 });
@@ -266,6 +268,26 @@ test("graph model separates center, linked, and candidate nodes", () => {
 	assert.ok(model.nodes.some((node) => node.kind === "linked" && node.path === "linked.md"));
 	assert.ok(model.nodes.some((node) => node.kind === "candidate" && node.path === "candidate.md"));
 	assert.equal(model.nodes.some((node) => node.kind === "candidate" && node.path === "linked.md"), false);
+});
+
+test("graph model respects linked and recommendation group visibility", () => {
+	const source = makeDoc(0, "source.md", [1, 0], ["web"], ["linked.md"], []);
+	const linked = makeDoc(1, "linked.md", [1, 0], ["web"], [], ["source.md"]);
+	const candidate = makeDoc(2, "candidate.md", [0.9, 0.1], ["web"], [], []);
+	const result = makeResult(candidate, 0.82);
+	const hiddenLinked = buildGraphModel(source, [linked], [result], {
+		...DEFAULT_SETTINGS.graphDisplay,
+		showLinkedNodes: false
+	});
+	assert.equal(hiddenLinked.nodes.some((node) => node.kind === "linked"), false);
+	assert.equal(hiddenLinked.nodes.some((node) => node.kind === "candidate"), true);
+
+	const hiddenCandidates = buildGraphModel(source, [linked], [result], {
+		...DEFAULT_SETTINGS.graphDisplay,
+		showCandidateNodes: false
+	});
+	assert.equal(hiddenCandidates.nodes.some((node) => node.kind === "linked"), true);
+	assert.equal(hiddenCandidates.nodes.some((node) => node.kind === "candidate"), false);
 });
 
 test("graph nodes carry document creation time for timelapse ordering", () => {

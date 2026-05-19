@@ -1,4 +1,4 @@
-import { ItemView, Notice, setIcon, WorkspaceLeaf } from "obsidian";
+import { ItemView, Notice, Setting, setIcon, WorkspaceLeaf } from "obsidian";
 import {
 	advanceForceLayout,
 	buildGraphModel,
@@ -9,9 +9,10 @@ import {
 	type GraphModel,
 	type GraphNode
 } from "../core/graph";
+import { defaultGraphDisplay } from "../core/settings";
 import { hasExistingLink } from "../core/template";
 import { clientToGraphPoint, clientToSvgPoint, panTransform, zoomTransformAtSvgPoint, type ViewTransform } from "../core/viewport";
-import type { IndexedDoc, RankingResult } from "../core/types";
+import type { GraphDisplaySettings, IndexedDoc, RankingResult } from "../core/types";
 import type SemanticLinkerPlugin from "../main";
 
 export const VIEW_TYPE_SEMANTIC_LINKER = "semantic-linker-view";
@@ -21,6 +22,10 @@ const OPTIMISTIC_LINK_TTL_MS = 3000;
 const OPTIMISTIC_LINK_CONTENT_CHECK_DELAY_MS = 250;
 const DRAG_CLICK_TOLERANCE_PX = 8;
 const TIMELAPSE_STEP_MS = 220;
+
+type NumericGraphDisplayKey = {
+	[K in keyof GraphDisplaySettings]: GraphDisplaySettings[K] extends number ? K : never
+}[keyof GraphDisplaySettings];
 
 interface OptimisticLinkedPath {
 	createdAt: number;
@@ -33,11 +38,6 @@ interface OptimisticUnlinkedPath {
 	expiresAt: number;
 	score: number;
 	result?: RankingResult;
-}
-
-interface SettingsModalLike {
-	open(): void;
-	openTabById(id: string): void;
 }
 
 export class SemanticLinkerView extends ItemView {
@@ -62,6 +62,8 @@ export class SemanticLinkerView extends ItemView {
 	private optimisticUnlinkedPathsBySource = new Map<string, Map<string, OptimisticUnlinkedPath>>();
 	private optimisticRefreshTimer: number | null = null;
 	private timelapseTimer: number | null = null;
+	private settingsButtonEl: HTMLButtonElement | null = null;
+	private settingsPanelEl: HTMLElement | null = null;
 	private timelapseButtonEl: HTMLButtonElement | null = null;
 	private timelapseSourceModel: GraphModel | null = null;
 
@@ -113,6 +115,7 @@ export class SemanticLinkerView extends ItemView {
 			window.clearTimeout(this.optimisticRefreshTimer);
 			this.optimisticRefreshTimer = null;
 		}
+		this.closeGraphSettingsPanel();
 		this.stopTimelapse();
 		this.cleanupPointerInteraction();
 		this.stopSimulation();
@@ -130,7 +133,7 @@ export class SemanticLinkerView extends ItemView {
 		if (!this.layoutModel) {
 			this.statusEl.setText("Loading graph...");
 		}
-		const activeFile = this.app.workspace.getActiveFile();
+		const activeFile = this.plugin.getActiveMarkdownFile();
 		if (!activeFile) {
 			this.clearGraph();
 			this.statusEl.setText("Open a note to see related notes.");
@@ -202,9 +205,11 @@ export class SemanticLinkerView extends ItemView {
 
 	private createGraphControls(parentEl: HTMLElement): void {
 		const controlsEl = parentEl.createDiv({ cls: "semantic-linker-graph-controls" });
-		controlsEl.appendChild(this.createGraphControlButton("settings", "Open Semantic Linker settings", () => {
-			this.openPluginSettings();
-		}));
+		this.settingsButtonEl = this.createGraphControlButton("settings", "Open graph settings", () => {
+			this.toggleGraphSettingsPanel();
+		});
+		this.settingsButtonEl.setAttr("aria-expanded", "false");
+		controlsEl.appendChild(this.settingsButtonEl);
 		this.timelapseButtonEl = this.createGraphControlButton("wand-sparkles", "Play timelapse animation", () => {
 			this.playTimelapseAnimation();
 		});
@@ -230,10 +235,180 @@ export class SemanticLinkerView extends ItemView {
 		return button;
 	}
 
-	private openPluginSettings(): void {
-		const appWithSettings = this.app as typeof this.app & { setting?: SettingsModalLike };
-		appWithSettings.setting?.open();
-		appWithSettings.setting?.openTabById(this.plugin.manifest.id);
+	private toggleGraphSettingsPanel(): void {
+		if (this.settingsPanelEl) {
+			this.closeGraphSettingsPanel();
+			return;
+		}
+		this.openGraphSettingsPanel();
+	}
+
+	private openGraphSettingsPanel(): void {
+		if (!this.graphHostEl) {
+			return;
+		}
+		this.closeGraphSettingsPanel();
+		const panelEl = this.graphHostEl.createDiv({ cls: "semantic-linker-graph-settings-panel" });
+		panelEl.setAttr("role", "dialog");
+		panelEl.setAttr("aria-label", "Graph settings");
+		panelEl.addEventListener("pointerdown", (event) => {
+			event.stopPropagation();
+		});
+		panelEl.addEventListener("wheel", (event) => {
+			event.stopPropagation();
+		});
+
+		const actionsEl = panelEl.createDiv({ cls: "semantic-linker-graph-settings-actions" });
+		actionsEl.appendChild(this.createPanelIconButton("rotate-ccw", "Reset graph settings", async () => {
+			this.plugin.settings.graphDisplay = defaultGraphDisplay();
+			await this.applyGraphSettingChanges({ resetLayout: true });
+			this.reopenGraphSettingsPanel();
+		}));
+		actionsEl.appendChild(this.createPanelIconButton("x", "Close graph settings", () => {
+			this.closeGraphSettingsPanel();
+		}));
+
+		this.createGraphSettingsSection(panelEl, "Filters", false, (sectionEl) => {
+			this.addPluginSlider(sectionEl, "Candidate limit", this.plugin.settings.topK, 1, 30, 1, async (value) => {
+				this.plugin.settings.topK = Math.max(1, Math.round(value));
+				await this.applyGraphSettingChanges({ resetCandidates: true, resetLayout: true });
+			});
+			this.addPluginSlider(sectionEl, "Minimum score", this.plugin.settings.minScore, 0, 1, 0.01, async (value) => {
+				this.plugin.settings.minScore = value;
+				await this.applyGraphSettingChanges({ resetCandidates: true, resetLayout: true });
+			});
+		});
+
+		this.createGraphSettingsSection(panelEl, "Groups", false, (sectionEl) => {
+			new Setting(sectionEl)
+				.setName("Linked")
+				.addToggle((toggle) => toggle
+					.setValue(this.plugin.settings.graphDisplay.showLinkedNodes)
+					.onChange(async (value) => {
+						this.plugin.settings.graphDisplay.showLinkedNodes = value;
+						await this.applyGraphSettingChanges({ resetLayout: true });
+					}));
+			new Setting(sectionEl)
+				.setName("Recommendations")
+				.addToggle((toggle) => toggle
+					.setValue(this.plugin.settings.graphDisplay.showCandidateNodes)
+					.onChange(async (value) => {
+						this.plugin.settings.graphDisplay.showCandidateNodes = value;
+						await this.applyGraphSettingChanges({ resetCandidates: true, resetLayout: true });
+					}));
+		});
+
+		this.createGraphSettingsSection(panelEl, "Display", true, (sectionEl) => {
+			this.addGraphDisplaySlider(sectionEl, "Node size", "nodeSize", 0.4, 2.4, 0.1);
+			this.addGraphDisplaySlider(sectionEl, "Link thickness", "linkThickness", 0.4, 2.4, 0.1);
+			this.addGraphDisplaySlider(sectionEl, "Text fade threshold", "textFadeThreshold", 0, 1, 0.05);
+			new Setting(sectionEl)
+				.setName("Show arrows")
+				.addToggle((toggle) => toggle
+					.setValue(this.plugin.settings.graphDisplay.showArrows)
+					.onChange(async (value) => {
+						this.plugin.settings.graphDisplay.showArrows = value;
+						await this.applyGraphSettingChanges();
+					}));
+		});
+
+		this.createGraphSettingsSection(panelEl, "Forces", false, (sectionEl) => {
+			this.addGraphDisplaySlider(sectionEl, "Center force", "centerForce", 0, 2, 0.05);
+			this.addGraphDisplaySlider(sectionEl, "Repel force", "repelForce", 0.2, 2.5, 0.05);
+			this.addGraphDisplaySlider(sectionEl, "Link force", "linkForce", 0, 2, 0.05);
+			this.addGraphDisplaySlider(sectionEl, "Link distance", "linkDistance", 0.6, 1.8, 0.05);
+		});
+
+		this.settingsPanelEl = panelEl;
+		this.updateGraphSettingsPanelState();
+	}
+
+	private closeGraphSettingsPanel(): void {
+		this.settingsPanelEl?.remove();
+		this.settingsPanelEl = null;
+		this.updateGraphSettingsPanelState();
+	}
+
+	private reopenGraphSettingsPanel(): void {
+		if (!this.graphHostEl) {
+			return;
+		}
+		this.openGraphSettingsPanel();
+	}
+
+	private updateGraphSettingsPanelState(): void {
+		const isOpen = Boolean(this.settingsPanelEl);
+		this.settingsButtonEl?.toggleClass("is-active", isOpen);
+		this.settingsButtonEl?.setAttr("aria-expanded", String(isOpen));
+	}
+
+	private createPanelIconButton(icon: string, label: string, onClick: () => void | Promise<void>): HTMLButtonElement {
+		const button = document.createElement("button");
+		button.type = "button";
+		button.addClass("clickable-icon");
+		button.addClass("semantic-linker-graph-settings-action");
+		button.setAttr("aria-label", label);
+		button.setAttr("title", label);
+		setIcon(button, icon);
+		button.addEventListener("pointerdown", (event) => {
+			event.stopPropagation();
+		});
+		button.addEventListener("click", (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			void onClick();
+		});
+		return button;
+	}
+
+	private createGraphSettingsSection(parentEl: HTMLElement, title: string, open: boolean, render: (sectionEl: HTMLElement) => void): void {
+		const detailsEl = parentEl.createEl("details", { cls: "semantic-linker-graph-settings-section" });
+		detailsEl.open = open;
+		const summaryEl = detailsEl.createEl("summary", { cls: "semantic-linker-graph-settings-section-header" });
+		const chevronEl = summaryEl.createSpan({ cls: "semantic-linker-graph-settings-section-chevron" });
+		setIcon(chevronEl, "chevron-right");
+		summaryEl.createSpan({ cls: "semantic-linker-graph-settings-section-title", text: title });
+		const sectionEl = detailsEl.createDiv({ cls: "semantic-linker-graph-settings-section-content" });
+		render(sectionEl);
+	}
+
+	private addGraphDisplaySlider(containerEl: HTMLElement, name: string, key: NumericGraphDisplayKey, min: number, max: number, step: number): void {
+		this.addPluginSlider(containerEl, name, this.plugin.settings.graphDisplay[key], min, max, step, async (value) => {
+			this.plugin.settings.graphDisplay[key] = value;
+			await this.applyGraphSettingChanges();
+		});
+	}
+
+	private addPluginSlider(
+		containerEl: HTMLElement,
+		name: string,
+		value: number,
+		min: number,
+		max: number,
+		step: number,
+		onChange: (value: number) => Promise<void>
+	): void {
+		new Setting(containerEl)
+			.setName(name)
+			.addSlider((slider) => slider
+				.setLimits(min, max, step)
+				.setValue(value)
+				.setDynamicTooltip()
+				.onChange(async (nextValue) => {
+					await onChange(nextValue);
+				}));
+	}
+
+	private async applyGraphSettingChanges(options: { resetCandidates?: boolean; resetLayout?: boolean } = {}): Promise<void> {
+		if (options.resetCandidates) {
+			this.visibleCandidatePaths = [];
+		}
+		if (options.resetLayout) {
+			this.layoutModel = null;
+		}
+		this.graphStructureKey = "";
+		await this.plugin.saveSettings();
+		await this.plugin.refreshRecommendations();
 	}
 
 	private playTimelapseAnimation(): void {
@@ -524,7 +699,7 @@ export class SemanticLinkerView extends ItemView {
 		label.setAttr("x", 0);
 		label.setAttr("y", -node.radius - 8);
 		label.setAttr("text-anchor", "middle");
-		label.setText(truncateTitle(node.title));
+		label.setText(node.title);
 		group.appendChild(label);
 
 		group.addEventListener("pointerdown", (event) => {
@@ -801,7 +976,7 @@ export class SemanticLinkerView extends ItemView {
 	}
 
 	private addOptimisticLinkedPath(path: string, linkCandidates: string[]): void {
-		const activeFile = this.app.workspace.getActiveFile();
+		const activeFile = this.plugin.getActiveMarkdownFile();
 		if (!activeFile) {
 			return;
 		}
@@ -823,7 +998,7 @@ export class SemanticLinkerView extends ItemView {
 	}
 
 	private clearOptimisticLinkedPath(path: string): void {
-		const activeFile = this.app.workspace.getActiveFile();
+		const activeFile = this.plugin.getActiveMarkdownFile();
 		if (!activeFile) {
 			return;
 		}
@@ -831,7 +1006,7 @@ export class SemanticLinkerView extends ItemView {
 	}
 
 	private addOptimisticUnlinkedPath(node: GraphNode): void {
-		const activeFile = this.app.workspace.getActiveFile();
+		const activeFile = this.plugin.getActiveMarkdownFile();
 		if (!activeFile) {
 			return;
 		}
@@ -862,10 +1037,6 @@ function svgTitle(text: string): SVGTitleElement {
 	const title = document.createElementNS(SVG_NS, "title");
 	title.setText(text);
 	return title;
-}
-
-function truncateTitle(title: string): string {
-	return title.length > 22 ? `${title.slice(0, 21)}...` : title;
 }
 
 function edgeId(edge: GraphEdge): string {
